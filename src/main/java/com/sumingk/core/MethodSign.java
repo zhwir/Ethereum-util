@@ -109,28 +109,30 @@ public class MethodSign {
     public static void digestMethodSign(JSONArray jsonArray, Keccak.Digest256 digest256) {
         for (int k = 0; k < jsonArray.size(); k++) {
             JSONObject object = jsonArray.getJSONObject(k);
-            if ("function".equalsIgnoreCase(object.getString("type"))) {
-                String funcName = object.getString("name");
-                String functionSign = "";
-                JSONArray inputsArray = object.getJSONArray("inputs");
-                String writeContent = "";
-                if (inputsArray != null && inputsArray.size() > 0) {
-                    StringBuffer sbf = new StringBuffer("(");
-                    for (int i = 0; i < inputsArray.size(); i++) {
-                        sbf.append(inputsArray.getJSONObject(i).getString("type"));
-                        if (i != inputsArray.size() - 1) sbf.append(",");
+            String name = object.getString("name");
+            if (name != null) {
+                StringBuffer sbf = new StringBuffer(name + "(");
+                JSONArray inputs = object.getJSONArray("inputs");
+                if ((inputs != null) && inputs.size() > 0) {
+                    for (int i = 0; i < inputs.size(); i++) {
+                        sbf.append(inputs.getJSONObject(i).getString("type"));
+                        if (i != inputs.size() - 1) {
+                            sbf.append(",");
+                        }
                     }
-                    sbf.append(")");
-                    String finalFunc = funcName + sbf.toString();
-                    functionSign = Hex.toHexString(digest256.digest(finalFunc.getBytes())).substring(0, 8);
-                    writeContent = functionSign + " : " + finalFunc;
-                    System.out.println(writeContent);
-                } else {
-                    functionSign = Hex.toHexString(digest256.digest((funcName + "()").getBytes())).substring(0, 8);
-                    writeContent = functionSign + " : " + funcName + "()";
-                    System.out.println(writeContent);
                 }
+                sbf.append(")");
+                String prototype = sbf.toString();
+                String signature = Hex.toHexString(digest256.digest(prototype.getBytes()));
+                String type = object.getString("type");
+                if ("function".equalsIgnoreCase(type)) {
+                    signature = signature.substring(0, 8);
+                } else if (!"event".equalsIgnoreCase(type)) {
+                    continue;
+                }
+                String writeContent = "0x" + signature + " : " + prototype;
                 FileOperate.writeMethodSign(System.getProperty("user.dir") + OUTPUT_FILENAME, writeContent + "\r\n");
+                System.out.println(writeContent);
             }
         }
     }
